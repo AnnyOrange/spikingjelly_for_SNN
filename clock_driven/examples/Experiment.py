@@ -30,7 +30,7 @@ class Argument:
     b = 32
     lr = 0.0001
     criterion = "MSELoss"
-    datasetdir = "/home/HaoYuDeng/桌面/Machine Learning/Dataset/CIFAR10DVS"
+    datasetdir = "./"
     opt = "Adam"
     amp = True
     momentum = 0.9
