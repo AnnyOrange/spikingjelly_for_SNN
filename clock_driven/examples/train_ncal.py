@@ -47,7 +47,7 @@ parser.add_argument('-T_max', default=32, type=int, help='T_max for CosineAnneal
 parser.add_argument('-j', default=64, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 args = parser.parse_args()
-log_file = "./Train_VGG_NCAL_TCSAttention_T14.log"
+log_file = "./Train_VGG_NCAL_LATAttention_T14.log"
 def log(x):
     file = open(log_file, 'a')
     file.write(x+'\n')
@@ -86,8 +86,8 @@ def train_VGG_NCAL():
         )
         net = VGG.VGG_NCAL(T=args.T, kernel_sizeTS=3, kernel_sizeSC=1, device=args.device).to(args.device)
 
-        log("Train_VGG_NCAL_TCSAttention_T14 on cuda:0")
-        trainer = Trainer(name="Train_VGG_NCAL_TCSAttention", net=net, train_data=train_loader,
+        log("Train_VGG_NCAL_LATAttention_T14 on cuda:0")
+        trainer = Trainer(name="Train_VGG_NCAL_LATAttention", net=net, train_data=train_loader,
                           validate_data=validate_loader, test_data=None, criterion="MSELoss",
                           device=args.device, optimizer="Adam", lr=args.lr, opt_args=(),
                           tensorboard_path="./tensorboard_NCAL_T14", enable_amp=args.amp, lr_scheduler_name='StepLR')
