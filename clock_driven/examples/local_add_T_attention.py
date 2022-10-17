@@ -9,7 +9,7 @@ from Swin import T
 
 
 class L_T_attention(nn.Module):
-    def __init__(self,T1: int,C:int,H: int,W:int,device = 'cpu' ):
+    def __init__(self,T1: int, C:int, H: int, W:int):
         super().__init__()
         self.T1 = T1
         self.N = None
@@ -19,19 +19,49 @@ class L_T_attention(nn.Module):
         self.C = C
 
         self.project_in = nn.Linear(self.C,self.D)
-        self.T_self = self_attention_T(P =self.D*self.H*self.W,C = self.C,H = self.H,W = self.W)
-        self.t = T(img_size=64, patch_size=1, in_chans=32, embed_dim=32, depths=[2, 4, 4], num_heads=[8, 8, 8], window_size=4)
+        self.T_self = self_attention_T(P=8*self.H*self.W,C = self.C,H = self.H,W = self.W)
+        self.T_self1 = self_attention_T(P=512, C=self.C, H=self.H, W=self.W)
+        self.T_self2 = self_attention_T(P=2048, C=self.C, H=self.H, W=self.W)
+        self.T_self3 = self_attention_T(P=8192, C=self.C, H=self.H, W=self.W)
+
+        self.t1 = T(img_size=48, patch_size=1, in_chans=32, embed_dim=32, depths=[2, 4, 4], num_heads=[8, 8, 8],
+                    window_size=4)
+
+        self.t3 = T(img_size=16, patch_size=1, in_chans=32, embed_dim=32, depths=[2, 4, 4], num_heads=[8, 8, 8],
+                    window_size=4)
+        self.t4 = T(img_size=32, patch_size=1, in_chans=32, embed_dim=32, depths=[2, 4, 4], num_heads=[8, 8, 8],
+                    window_size=4)
+        self.t2 = T(img_size=8, patch_size=1, in_chans=32, embe_dim = 32, depths=[2, 4, 4], num_heads=[8, 8, 8],
+                    window_size=4)
     def forward(self,x):
+
         #x [T,N,C,H,W]
         x = x.permute(1, 0, 2, 3, 4)  # [N,T,C,H,W]
         [self.N, self.T1, self.C, self.H, self.W] = x.size()
-        print(self.N)
+        # print(self.N)
         x = x.reshape(x.shape[0]*x.shape[1], x.shape[2], x.shape[3], x.shape[4])  # [NT,C,H,W]
         x = x.permute(0,2,3,1) #[NT,H,W,C]
-        x = self.project_in(x) #[NT,H,W,D]
-        x = self.t(x)
-        x = x.reshape(self.N, self.T1, self.D*self.H*self.W)#[N,T,P]
-        x = self.T_self(x)
+        x = (self.project_in(x)).permute(0,3,1,2) #[NT,H,W,D]不应该是[B,D,H,W]
+        if (self.H == 48):
+            x = self.t1(x) #[NT,128,H/4,W/4]
+            x = x.reshape(self.N,self.T1, x.shape[1]*x.shape[2]*x.shape[3])
+            x = self.T_self(x)
+        if (self.H == 6):
+            x = F.pad(x, pad=(1, 1, 1, 1), mode="constant", value=0)  # 将[B,D,H,W]转化为[B,D,8,8]
+            x = self.t2(x)#[B,128,2,2]
+            x = x.reshape(self.N, self.T1, x.shape[1] * x.shape[2] * x.shape[3])
+            x = self.T_self1(x)
+        if (self.H == 12):
+            x = F.pad(x, pad=(2, 2, 2, 2), mode="constant", value=0)  # 将[B,D,H,W]转化为[B,D,16,16]
+            x = self.t3(x)#【B,128,4,4】
+            x = x.reshape(self.N, self.T1, x.shape[1] * x.shape[2] * x.shape[3])
+            x = self.T_self2(x)
+        if (self.H == 24):
+            x = F.pad(x, pad=(4, 4, 4, 4), mode="constant", value=0)#将[B,D,H,W]转化为[B,D,32,32]
+            x = self.t4(x)#[B,128,8,8]
+            x = x.reshape(self.N, self.T1, x.shape[1] * x.shape[2] * x.shape[3])
+            x = self.T_self3(x)
+        # x = self.T_self(x)
         return x
 
 
@@ -75,8 +105,22 @@ class self_attention_T(nn.Module):
         y = y.permute(1, 0, 2, 3, 4)#[T,N,C,H,W]
         return y
 
-net = L_T_attention(T1=10,C = 64,H = 128,W = 128)
+# net = L_T_attention(T1=10,C = 64,H = 128,W = 128)
+#
+# x = torch.randn(10,64,64,128,128)
+# x = net(x)
+# print(x.shape)
 
-x = torch.randn(10,64,64,128,128)
-x = net(x)
-print(x.shape)
+def main():
+    device = torch.device('cuda:0')
+    print("start")
+    net = L_T_attention(T1=2,C = 2,H = 24,W = 24).to(device)
+    x = torch.randn(2, 4, 2, 24, 24).to(device)
+    print("x:\n",x.shape)
+
+    y = net(x).to(device)
+    print(y.shape)
+    #[B,D,H,W]
+
+if __name__ == '__main__':
+    main()
